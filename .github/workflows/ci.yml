@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  GOFLAGS: -mod=readonly
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.x'
+      - run: go mod download
+      - run: go mod verify
+      - run: go test -race ./...
+      - run: go vet ./...
+
+  cross-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: darwin
+            goarch: amd64
+            output: score2pdf-macos-intel
+          - goos: darwin
+            goarch: arm64
+            output: score2pdf-macos-apple-silicon
+          - goos: windows
+            goarch: amd64
+            output: score2pdf-windows-x64.exe
+          - goos: windows
+            goarch: arm64
+            output: score2pdf-windows-arm64.exe
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.x'
+      - name: Cross-build
+        env:
+          CGO_ENABLED: '0'
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go mod download
+          go build -trimpath -o "dist/${{ matrix.output }}" ./cmd/score2pdf

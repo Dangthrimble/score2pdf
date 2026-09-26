@@ -1,0 +1,10 @@
+# Build output
+/dist/
+/score2pdf
+/score2pdf.exe
+
+# Generated PDFs
+*.pdf
+
+# macOS
+.DS_Store

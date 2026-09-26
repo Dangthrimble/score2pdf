@@ -1,0 +1,94 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  GOFLAGS: -mod=readonly
+
+jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: darwin
+            goarch: amd64
+            binary: score2pdf
+            archive: score2pdf-macos-intel.zip
+          - goos: darwin
+            goarch: arm64
+            binary: score2pdf
+            archive: score2pdf-macos-apple-silicon.zip
+          - goos: windows
+            goarch: amd64
+            binary: score2pdf.exe
+            archive: score2pdf-windows-x64.zip
+          - goos: windows
+            goarch: arm64
+            binary: score2pdf.exe
+            archive: score2pdf-windows-arm64.zip
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.x'
+
+      - name: Build
+        env:
+          CGO_ENABLED: '0'
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go mod download
+          mkdir -p dist/package
+          BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          go build -trimpath \
+            -ldflags "-s -w -X main.version=${GITHUB_REF_NAME} -X main.commit=${GITHUB_SHA} -X main.date=${BUILD_DATE}" \
+            -o "dist/package/${{ matrix.binary }}" \
+            ./cmd/score2pdf
+          cp README.md THIRD_PARTY_NOTICES.txt dist/package/
+          cd dist/package
+          zip -9 "../${{ matrix.archive }}" "${{ matrix.binary }}" README.md THIRD_PARTY_NOTICES.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive }}
+          path: dist/${{ matrix.archive }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create checksums
+        run: |
+          cd dist
+          sha256sum *.zip > SHA256SUMS.txt
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/*.zip \
+            dist/SHA256SUMS.txt \
+            --repo "${GITHUB_REPOSITORY}" \
+            --generate-notes \
+            --title "${GITHUB_REF_NAME}"
