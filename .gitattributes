@@ -1,0 +1,6 @@
+# Keep licence, documentation and scripts identical in every platform package.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.tif binary
+*.bmp binary

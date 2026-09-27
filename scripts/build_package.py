@@ -60,7 +60,9 @@ def main():
                 for path in sorted(folder.iterdir()):
                     t.add(path, arcname=path.name, recursive=False)
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
-    archive.with_name(archive.name + ".sha256").write_text(f"{digest}  {archive.name}\n", encoding="utf-8")
+    archive.with_name(archive.name + ".sha256").write_text(
+        f"{digest}  {archive.name}\n", encoding="utf-8", newline="\n"
+    )
     print(f"Built {archive}: {digest}")
 
 
