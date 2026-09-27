@@ -37,6 +37,14 @@ jobs:
             goarch: arm64
             binary: score2pdf.exe
             archive: score2pdf-windows-arm64.zip
+          - goos: linux
+            goarch: amd64
+            binary: score2pdf
+            archive: score2pdf-linux-x64.tar.gz
+          - goos: linux
+            goarch: arm64
+            binary: score2pdf
+            archive: score2pdf-linux-arm64.tar.gz
 
     steps:
       - uses: actions/checkout@v7
@@ -60,7 +68,14 @@ jobs:
             ./cmd/score2pdf
           cp README.md THIRD_PARTY_NOTICES.txt dist/package/
           cd dist/package
-          zip -9 "../${{ matrix.archive }}" "${{ matrix.binary }}" README.md THIRD_PARTY_NOTICES.txt
+          case "${{ matrix.archive }}" in
+            *.tar.gz)
+              tar -czf "../${{ matrix.archive }}" "${{ matrix.binary }}" README.md THIRD_PARTY_NOTICES.txt
+              ;;
+            *.zip)
+              zip -9 "../${{ matrix.archive }}" "${{ matrix.binary }}" README.md THIRD_PARTY_NOTICES.txt
+              ;;
+          esac
 
       - uses: actions/upload-artifact@v4
         with:
@@ -80,7 +95,7 @@ jobs:
       - name: Create checksums
         run: |
           cd dist
-          sha256sum *.zip > SHA256SUMS.txt
+          sha256sum *.zip *.tar.gz > SHA256SUMS.txt
 
       - name: Create GitHub release
         env:
@@ -88,6 +103,7 @@ jobs:
         run: |
           gh release create "${GITHUB_REF_NAME}" \
             dist/*.zip \
+            dist/*.tar.gz \
             dist/SHA256SUMS.txt \
             --repo "${GITHUB_REPOSITORY}" \
             --generate-notes \

@@ -183,7 +183,7 @@ Use source images from another directory:
 score2pdf --input-dir ./pages "Jingle Bells.pdf"
 ```
 
-By default, an existing output is never replaced, including one created by another process during conversion. Safe publication requires hard-link support (such as APFS or NTFS); unsupported filesystems fail with an error. For an exFAT/FAT destination, create the PDF on a supported local disk and then copy it.
+By default, an existing output is never replaced, including one created by another process during conversion. Safe publication requires hard-link support (such as APFS, NTFS or ext4); unsupported filesystems fail with an error. For an exFAT/FAT destination, create the PDF on a supported local disk and then copy it.
 
 Replace an existing PDF:
 
@@ -205,7 +205,7 @@ score2pdf -h
 
 ## Builds
 
-Release builds are produced for four targets:
+Release builds are produced for six targets:
 
 | Platform | Architecture | Release name |
 | --- | --- | --- |
@@ -213,8 +213,19 @@ Release builds are produced for four targets:
 | macOS | Apple Silicon (`arm64`) | `score2pdf-macos-apple-silicon.zip` |
 | Windows | x64 (`amd64`) | `score2pdf-windows-x64.zip` |
 | Windows | ARM64 (`arm64`) | `score2pdf-windows-arm64.zip` |
+| Linux | x64 (`amd64`) | `score2pdf-linux-x64.tar.gz` |
+| Linux | ARM64 (`arm64`) | `score2pdf-linux-arm64.tar.gz` |
 
 The binaries are built with `CGO_ENABLED=0`, so no additional runtime libraries are required.
+
+Linux archives preserve executable permissions. Extract the archive for your architecture and run the binary:
+
+```sh
+tar -xzf score2pdf-linux-x64.tar.gz
+./score2pdf --version
+```
+
+Use `score2pdf-linux-arm64.tar.gz` on a 64-bit ARM system. CI runs the tests and standalone binary on both Linux architectures. `SHA256SUMS.txt` covers all six release archives.
 
 ## Build from source
 
@@ -230,6 +241,6 @@ Run the tests:
 go test ./...
 ```
 
-The GitHub Actions release workflow builds all four supported binaries when a tag beginning with `v` is pushed, for example `v0.1.0`.
+The GitHub Actions release workflow builds all six supported binaries when a tag beginning with `v` is pushed, for example `v0.1.0`.
 
-Release ZIPs include `THIRD_PARTY_NOTICES.txt` for the Go runtime and image decoders. Release publication waits for tests on Linux, macOS and Windows and for all four cross-builds to pass.
+Release archives include `THIRD_PARTY_NOTICES.txt` for the Go runtime and image decoders. Release publication waits for tests on Linux, macOS and Windows and for all six cross-builds to pass.
