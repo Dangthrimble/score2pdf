@@ -66,17 +66,17 @@ def main():
     expected_checksum = archive.with_name(archive.name + ".sha256").read_text().split()[0]
     assert digest(archive) == expected_checksum, "archive checksum mismatch"
     binary_name = "score2pdf.exe" if goos == "windows" else "score2pdf"
-    expected = {binary_name, "README.md", "LICENSE", "THIRD_PARTY_NOTICES.txt"}
+    expected = {binary_name, "README.md", "INSTALL.md", "LICENSE", "THIRD_PARTY_NOTICES.txt"}
     if archive.name.endswith(".zip"):
         with zipfile.ZipFile(archive) as z:
-            assert len(z.namelist()) == 4 and set(z.namelist()) == expected
+            assert len(z.namelist()) == len(expected) and set(z.namelist()) == expected
             assert z.testzip() is None
             data = {name: z.read(name) for name in expected}
             if goos != "windows":
                 assert z.getinfo(binary_name).external_attr >> 16 & 0o111
     else:
         with tarfile.open(archive, "r:gz") as t:
-            assert len(t.getmembers()) == 4 and {m.name for m in t.getmembers()} == expected
+            assert len(t.getmembers()) == len(expected) and {m.name for m in t.getmembers()} == expected
             assert all(m.isfile() for m in t.getmembers())
             assert t.getmember(binary_name).mode & 0o111
             data = {name: t.extractfile(name).read() for name in expected}

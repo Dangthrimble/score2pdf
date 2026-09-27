@@ -48,7 +48,7 @@ def main():
             "-o", str(folder / binary), "./cmd/score2pdf",
         ], cwd=ROOT, env=env, check=True)
         (folder / binary).chmod(0o755)
-        for name in ("README.md", "LICENSE", "THIRD_PARTY_NOTICES.txt"):
+        for name in ("README.md", "INSTALL.md", "LICENSE", "THIRD_PARTY_NOTICES.txt"):
             shutil.copyfile(ROOT / name, folder / name)
             (folder / name).chmod(0o644)
         if extension == ".zip":

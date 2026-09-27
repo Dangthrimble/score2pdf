@@ -46,6 +46,9 @@ The program deliberately follows a **one image file = one PDF page** rule. Multi
 
 ## Quick start
 
+See [INSTALL.md](INSTALL.md) for downloads, checksum verification, installation
+and first-run instructions on macOS, Windows and Linux.
+
 With files such as `Jingle Bells p01.png`, `Jingle Bells p02.jpg`, etc. in the current directory:
 
 ```sh
