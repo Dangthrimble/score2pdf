@@ -1,0 +1,2 @@
+# Verification only; not a runtime dependency of score2pdf.
+pypdf==6.19.0

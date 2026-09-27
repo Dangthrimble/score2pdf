@@ -243,4 +243,25 @@ go test ./...
 
 The GitHub Actions release workflow builds all six supported binaries when a tag beginning with `v` is pushed, for example `v0.1.0`.
 
-Release archives include `THIRD_PARTY_NOTICES.txt` for the Go runtime and image decoders. Release publication waits for tests on Linux, macOS and Windows and for all six cross-builds to pass.
+Release archives include `THIRD_PARTY_NOTICES.txt` for the Go runtime and image decoders. Release publication waits for tests on Linux, macOS and Windows and native runtime verification of all six packaged executables. The release publishes those exact verified archives.
+
+## Licence
+
+score2pdf is licensed under the [MIT licence](LICENSE), copyright 2026 Dangthrimble.
+All release packages include `LICENSE`. Third-party components retain their own
+licences, reproduced separately in `THIRD_PARTY_NOTICES.txt`.
+
+## Hosted runtime verification
+
+CI builds, unpacks and executes the release-format package on each of the six
+native operating-system/architecture combinations. A separate PDF reader checks
+four-format image conversion, numeric page ordering, trimming, A4 geometry,
+top/middle/bottom alignment and mirrored margins. The checks also exercise
+version metadata, overwrite refusal, forced replacement, preservation of an
+existing PDF after a failed conversion, duplicate page rejection and multi-page
+TIFF rejection even when the filename extension is misleading.
+
+Each successful job retains its package and SHA-256 checksum plus a JSON report
+and sample PDFs as GitHub Actions artifacts. These CI artifacts are development
+builds, not published releases. Verification uses Python and pypdf only on the
+build/test hosts; the distributed score2pdf executable remains standalone.

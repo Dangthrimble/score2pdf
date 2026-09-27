@@ -3,13 +3,20 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
   workflow_call:
+    inputs:
+      package-version:
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
 
 env:
   GOFLAGS: -mod=readonly
+  PACKAGE_VERSION: ${{ inputs.package-version || format('ci-{0}', github.sha) }}
 
 jobs:
   test:
@@ -26,45 +33,73 @@ jobs:
       - run: go mod verify
       - run: go test -race ./...
       - run: go vet ./...
-      - name: Run standalone Linux binary
-        if: runner.os == 'Linux'
-        run: |
-          CGO_ENABLED=0 go build -trimpath -o dist/score2pdf ./cmd/score2pdf
-          dist/score2pdf --version
 
-  cross-build:
-    runs-on: ubuntu-latest
+  runtime:
+    name: Runtime (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - goos: darwin
-            goarch: amd64
-            output: score2pdf-macos-intel
-          - goos: darwin
-            goarch: arm64
-            output: score2pdf-macos-apple-silicon
-          - goos: windows
-            goarch: amd64
-            output: score2pdf-windows-x64.exe
-          - goos: windows
-            goarch: arm64
-            output: score2pdf-windows-arm64.exe
-          - goos: linux
-            goarch: amd64
-            output: score2pdf-linux-x64
-          - goos: linux
-            goarch: arm64
-            output: score2pdf-linux-arm64
+          - target: macos-intel
+            runner: macos-15-intel
+            python-arch: x64
+            archive: score2pdf-macos-intel.zip
+          - target: macos-apple-silicon
+            runner: macos-15
+            python-arch: arm64
+            archive: score2pdf-macos-apple-silicon.zip
+          - target: windows-x64
+            runner: windows-2025
+            python-arch: x64
+            archive: score2pdf-windows-x64.zip
+          - target: windows-arm64
+            runner: windows-11-arm
+            python-arch: arm64
+            archive: score2pdf-windows-arm64.zip
+          - target: linux-x64
+            runner: ubuntu-24.04
+            python-arch: x64
+            archive: score2pdf-linux-x64.tar.gz
+          - target: linux-arm64
+            runner: ubuntu-24.04-arm
+            python-arch: arm64
+            archive: score2pdf-linux-arm64.tar.gz
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
           go-version: '1.27.x'
-      - name: Cross-build
-        env:
-          CGO_ENABLED: '0'
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.python-arch }}
+      - run: python -m pip install -r scripts/requirements-runtime.txt
+      - run: go mod download
+      - name: Build release-format package
         run: |
-          go mod download
-          go build -trimpath -o "dist/${{ matrix.output }}" ./cmd/score2pdf
+          python scripts/build_package.py --target "${{ matrix.target }}" \
+            --version "$PACKAGE_VERSION" --commit "$GITHUB_SHA"
+      - name: Verify packaged executable on native host
+        run: |
+          python scripts/verify_runtime.py --target "${{ matrix.target }}" \
+            --archive "dist/packages/${{ matrix.archive }}" \
+            --version "$PACKAGE_VERSION" --commit "$GITHUB_SHA" \
+            --output dist/runtime
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runtime-package-${{ matrix.target }}
+          path: dist/packages/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: runtime-report-${{ matrix.target }}
+          path: |
+            dist/runtime/*.json
+            dist/runtime/*.pdf
+          if-no-files-found: warn
