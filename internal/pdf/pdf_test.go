@@ -1,4 +1,4 @@
-package main
+package pdf
 
 import (
 	"image"
@@ -12,7 +12,7 @@ import (
 	"github.com/Dangthrimble/score2pdf/internal/pages"
 )
 
-func TestCreatePDF(t *testing.T) {
+func TestCreate(t *testing.T) {
 	d := t.TempDir()
 	for i := 1; i <= 2; i++ {
 		img := image.NewNRGBA(image.Rect(0, 0, 120, 160))
@@ -46,7 +46,7 @@ func TestCreatePDF(t *testing.T) {
 	}
 	out := filepath.Join(d, "Test.pdf")
 	m := geometry.MarginConfig{Top: 36, Bottom: 36, Left: 36, Right: 36, Inner: 36, Outer: 36, Binding: "left"}
-	if err := createPDF(out, pageList, geometry.PageSize{Width: geometry.MmToPoints(210), Height: geometry.MmToPoints(297)}, m, "top", 242, false); err != nil {
+	if err := Create(out, pageList, geometry.PageSize{Width: geometry.MmToPoints(210), Height: geometry.MmToPoints(297)}, m, "top", 242, false); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(out)
@@ -55,5 +55,35 @@ func TestCreatePDF(t *testing.T) {
 	}
 	if len(b) < 100 || string(b[:8]) != "%PDF-1.4" {
 		t.Fatalf("not a PDF: %q", b[:min(8, len(b))])
+	}
+}
+
+func TestPublishReplacement(t *testing.T) {
+	d := t.TempDir()
+	dest := filepath.Join(d, "existing.pdf")
+	source := filepath.Join(d, "completed.tmp")
+	if err := os.WriteFile(dest, []byte("original"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	// Failure to replace must not remove the previous PDF.
+	if err := Publish(source, dest, true); err == nil {
+		t.Fatal("expected missing source error")
+	}
+	got, err := os.ReadFile(dest)
+	if err != nil || string(got) != "original" {
+		t.Fatalf("original lost: %q, %v", got, err)
+	}
+	if err := os.WriteFile(source, []byte("replacement"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := Publish(source, dest, false); err == nil {
+		t.Fatal("overwrote without force")
+	}
+	if err := Publish(source, dest, true); err != nil {
+		t.Fatal(err)
+	}
+	got, err = os.ReadFile(dest)
+	if err != nil || string(got) != "replacement" {
+		t.Fatalf("replacement failed: %q, %v", got, err)
 	}
 }

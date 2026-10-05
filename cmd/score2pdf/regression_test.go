@@ -91,36 +91,6 @@ func TestOutputCreatedDuringConversion(t *testing.T) {
 	}
 }
 
-func TestPublishPDFReplacement(t *testing.T) {
-	d := t.TempDir()
-	dest := filepath.Join(d, "existing.pdf")
-	source := filepath.Join(d, "completed.tmp")
-	if err := os.WriteFile(dest, []byte("original"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	// Failure to replace must not remove the previous PDF.
-	if err := publishPDF(source, dest, true); err == nil {
-		t.Fatal("expected missing source error")
-	}
-	got, err := os.ReadFile(dest)
-	if err != nil || string(got) != "original" {
-		t.Fatalf("original lost: %q, %v", got, err)
-	}
-	if err := os.WriteFile(source, []byte("replacement"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := publishPDF(source, dest, false); err == nil {
-		t.Fatal("overwrote without force")
-	}
-	if err := publishPDF(source, dest, true); err != nil {
-		t.Fatal(err)
-	}
-	got, err = os.ReadFile(dest)
-	if err != nil || string(got) != "replacement" {
-		t.Fatalf("replacement failed: %q, %v", got, err)
-	}
-}
-
 func TestBigTIFFWithPNGExtension(t *testing.T) {
 	for _, header := range []string{"II\x2b\x00\x08\x00\x00\x00", "MM\x00\x2b\x00\x08\x00\x00"} {
 		path := filepath.Join(t.TempDir(), "Piece p01.png")
