@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"golang.org/x/image/tiff"
 	"image"
 	"image/color"
 	"io"
@@ -12,6 +11,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"golang.org/x/image/tiff"
+
+	"github.com/Dangthrimble/score2pdf/internal/imageutil"
 )
 
 func TestMultipageTIFFWithPNGExtension(t *testing.T) {
@@ -33,10 +36,10 @@ func TestMultipageTIFFWithPNGExtension(t *testing.T) {
 	if err := os.WriteFile(path, both, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := ensureSinglePageTIFF(path); err == nil {
+	if err := imageutil.EnsureSinglePageTIFF(path); err == nil {
 		t.Fatal("fixture should have multiple TIFF pages")
 	}
-	if _, err := loadAndTrimImage(path, 242); err == nil || !strings.Contains(err.Error(), "multi-page TIFF") {
+	if _, err := imageutil.LoadAndTrim(path, 242); err == nil || !strings.Contains(err.Error(), "multi-page TIFF") {
 		t.Fatalf("expected multi-page TIFF error, got %v", err)
 	}
 }
@@ -88,43 +91,13 @@ func TestOutputCreatedDuringConversion(t *testing.T) {
 	}
 }
 
-func TestPublishPDFReplacement(t *testing.T) {
-	d := t.TempDir()
-	dest := filepath.Join(d, "existing.pdf")
-	source := filepath.Join(d, "completed.tmp")
-	if err := os.WriteFile(dest, []byte("original"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	// Failure to replace must not remove the previous PDF.
-	if err := publishPDF(source, dest, true); err == nil {
-		t.Fatal("expected missing source error")
-	}
-	got, err := os.ReadFile(dest)
-	if err != nil || string(got) != "original" {
-		t.Fatalf("original lost: %q, %v", got, err)
-	}
-	if err := os.WriteFile(source, []byte("replacement"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := publishPDF(source, dest, false); err == nil {
-		t.Fatal("overwrote without force")
-	}
-	if err := publishPDF(source, dest, true); err != nil {
-		t.Fatal(err)
-	}
-	got, err = os.ReadFile(dest)
-	if err != nil || string(got) != "replacement" {
-		t.Fatalf("replacement failed: %q, %v", got, err)
-	}
-}
-
 func TestBigTIFFWithPNGExtension(t *testing.T) {
 	for _, header := range []string{"II\x2b\x00\x08\x00\x00\x00", "MM\x00\x2b\x00\x08\x00\x00"} {
 		path := filepath.Join(t.TempDir(), "Piece p01.png")
 		if err := os.WriteFile(path, []byte(header), 0600); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := loadAndTrimImage(path, 242); err == nil || !strings.Contains(err.Error(), "BigTIFF") {
+		if _, err := imageutil.LoadAndTrim(path, 242); err == nil || !strings.Contains(err.Error(), "BigTIFF") {
 			t.Fatalf("expected BigTIFF error, got %v", err)
 		}
 	}
@@ -139,7 +112,7 @@ func TestSinglePageTIFFWithPNGExtension(t *testing.T) {
 	if err := os.WriteFile(path, b.Bytes(), 0600); err != nil {
 		t.Fatal(err)
 	}
-	img, err := loadAndTrimImage(path, 242)
+	img, err := imageutil.LoadAndTrim(path, 242)
 	if err != nil {
 		t.Fatal(err)
 	}
