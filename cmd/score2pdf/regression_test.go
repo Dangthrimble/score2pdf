@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"golang.org/x/image/tiff"
 	"image"
 	"image/color"
 	"io"
@@ -12,6 +11,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"golang.org/x/image/tiff"
+
+	"github.com/Dangthrimble/score2pdf/internal/imageutil"
 )
 
 func TestMultipageTIFFWithPNGExtension(t *testing.T) {
@@ -33,10 +36,10 @@ func TestMultipageTIFFWithPNGExtension(t *testing.T) {
 	if err := os.WriteFile(path, both, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := ensureSinglePageTIFF(path); err == nil {
+	if err := imageutil.EnsureSinglePageTIFF(path); err == nil {
 		t.Fatal("fixture should have multiple TIFF pages")
 	}
-	if _, err := loadAndTrimImage(path, 242); err == nil || !strings.Contains(err.Error(), "multi-page TIFF") {
+	if _, err := imageutil.LoadAndTrim(path, 242); err == nil || !strings.Contains(err.Error(), "multi-page TIFF") {
 		t.Fatalf("expected multi-page TIFF error, got %v", err)
 	}
 }
@@ -124,7 +127,7 @@ func TestBigTIFFWithPNGExtension(t *testing.T) {
 		if err := os.WriteFile(path, []byte(header), 0600); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := loadAndTrimImage(path, 242); err == nil || !strings.Contains(err.Error(), "BigTIFF") {
+		if _, err := imageutil.LoadAndTrim(path, 242); err == nil || !strings.Contains(err.Error(), "BigTIFF") {
 			t.Fatalf("expected BigTIFF error, got %v", err)
 		}
 	}
@@ -139,7 +142,7 @@ func TestSinglePageTIFFWithPNGExtension(t *testing.T) {
 	if err := os.WriteFile(path, b.Bytes(), 0600); err != nil {
 		t.Fatal(err)
 	}
-	img, err := loadAndTrimImage(path, 242)
+	img, err := imageutil.LoadAndTrim(path, 242)
 	if err != nil {
 		t.Fatal(err)
 	}
