@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Dangthrimble/score2pdf/internal/geometry"
 	"github.com/Dangthrimble/score2pdf/internal/pages"
@@ -46,7 +47,7 @@ func TestCreate(t *testing.T) {
 	}
 	out := filepath.Join(d, "Test.pdf")
 	m := geometry.MarginConfig{Top: 36, Bottom: 36, Left: 36, Right: 36, Inner: 36, Outer: 36, Binding: "left"}
-	if err := Create(out, pageList, geometry.PageSize{Width: geometry.MmToPoints(210), Height: geometry.MmToPoints(297)}, m, "top", 242, false); err != nil {
+	if err := Create(out, pageList, geometry.PageSize{Width: geometry.MmToPoints(210), Height: geometry.MmToPoints(297)}, m, "top", 242, false, false); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(out)
@@ -85,5 +86,17 @@ func TestPublishReplacement(t *testing.T) {
 	got, err = os.ReadFile(dest)
 	if err != nil || string(got) != "replacement" {
 		t.Fatalf("replacement failed: %q, %v", got, err)
+	}
+}
+
+func TestFileSizeAndDurationFormatting(t *testing.T) {
+	if got := formatFileSize(3876105); got != "3.88 MB" {
+		t.Fatalf("file size = %q", got)
+	}
+	if got := formatDuration(21*time.Second + 180*time.Millisecond); got != "21.2 seconds" {
+		t.Fatalf("duration = %q", got)
+	}
+	if got := formatDuration(40 * time.Millisecond); got != "less than 0.1 seconds" {
+		t.Fatalf("short duration = %q", got)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/Dangthrimble/score2pdf/internal/geometry"
 	"github.com/Dangthrimble/score2pdf/internal/imageutil"
@@ -28,7 +29,8 @@ type writer struct {
 	offsets []int64
 }
 
-func Create(output string, pageList []pages.Page, ps geometry.PageSize, mc geometry.MarginConfig, align string, threshold uint8, force bool) error {
+func Create(output string, pageList []pages.Page, ps geometry.PageSize, mc geometry.MarginConfig, align string, threshold uint8, force bool, optimise bool) error {
+	started := time.Now()
 	outDir := filepath.Dir(output)
 	if outDir == "" {
 		outDir = "."
@@ -58,12 +60,17 @@ func Create(output string, pageList []pages.Page, ps geometry.PageSize, mc geome
 		return err
 	}
 
+	mode := "legacy"
+	if optimise {
+		mode = "lossless"
+	}
+
 	for i, pf := range pageList {
 		img, err := imageutil.LoadAndTrim(pf.Path, threshold)
 		if err != nil {
 			return fmt.Errorf("%s: %w", pf.Name, err)
 		}
-		enc, err := imageutil.Encode(img)
+		enc, err := imageutil.EncodeMode(img, mode)
 		if err != nil {
 			return fmt.Errorf("%s: %w", pf.Name, err)
 		}
@@ -95,8 +102,32 @@ func Create(output string, pageList []pages.Page, ps geometry.PageSize, mc geome
 	if err := Publish(tmpName, output, force); err != nil {
 		return err
 	}
-	fmt.Printf("Created %s\n", output)
+	info, err := os.Stat(output)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Created %s (%s) in %s\n", output, formatFileSize(info.Size()), formatDuration(time.Since(started)))
 	return nil
+}
+
+func formatFileSize(size int64) string {
+	if size < 1000 {
+		return fmt.Sprintf("%d bytes", size)
+	}
+	if size < 1000*1000 {
+		return fmt.Sprintf("%.1f KB", float64(size)/1000)
+	}
+	return fmt.Sprintf("%.2f MB", float64(size)/(1000*1000))
+}
+
+func formatDuration(d time.Duration) string {
+	if d < 100*time.Millisecond {
+		return "less than 0.1 seconds"
+	}
+	if d < time.Second {
+		return fmt.Sprintf("%.1f seconds", d.Seconds())
+	}
+	return fmt.Sprintf("%.1f seconds", d.Round(100*time.Millisecond).Seconds())
 }
 
 // Publish installs a completed file without a check-then-rename race.
@@ -201,9 +232,7 @@ func (p *writer) writePage(index int, ps geometry.PageSize, place geometry.Place
 	if err := p.beginObject(imageID); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(p.cw,
-		"<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace %s /BitsPerComponent 8 /Filter /FlateDecode /Length %d >>\nstream\n",
-		img.Width, img.Height, img.ColorSpace, len(img.Data)); err != nil {
+	if _, err := fmt.Fprintf(p.cw, "%s\nstream\n", img.Dictionary()); err != nil {
 		return err
 	}
 	if _, err := p.cw.Write(img.Data); err != nil {

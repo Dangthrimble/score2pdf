@@ -44,6 +44,7 @@ func run(args []string) error {
 	binding := fs.String("binding", "left", "binding edge for mirrored margins: left or right")
 	align := fs.String("align", "top", "vertical alignment within margins: top, middle, or bottom")
 	trimThreshold := fs.Int("trim-threshold", 242, "0-255 threshold; pixels at or above this in RGB are treated as white")
+	optimise := fs.Bool("optimise", false, "spend extra time reducing PDF size without changing image pixels")
 	force := fs.Bool("force", false, "replace an existing output PDF")
 	showVersion := fs.Bool("version", false, "print version information")
 
@@ -118,6 +119,9 @@ func run(args []string) error {
 	fmt.Printf("Page size: %s (%.2f x %.2f mm)\n", *pageSpec, geometry.PointsToMM(ps.Width), geometry.PointsToMM(ps.Height))
 	fmt.Printf("Pages: %d\n", len(pageList))
 	fmt.Printf("Vertical alignment: %s\n", alignment)
+	if *optimise {
+		fmt.Println("Lossless size optimisation: enabled")
+	}
 	if mc.Mirror {
 		fmt.Printf("Margins: top %.2f mm, bottom %.2f mm, inner %.2f mm, outer %.2f mm, %s binding\n",
 			geometry.PointsToMM(mc.Top), geometry.PointsToMM(mc.Bottom), geometry.PointsToMM(mc.Inner), geometry.PointsToMM(mc.Outer), mc.Binding)
@@ -126,5 +130,5 @@ func run(args []string) error {
 			geometry.PointsToMM(mc.Top), geometry.PointsToMM(mc.Bottom), geometry.PointsToMM(mc.Left), geometry.PointsToMM(mc.Right))
 	}
 
-	return pdf.Create(output, pageList, ps, mc, alignment, uint8(*trimThreshold), *force)
+	return pdf.Create(output, pageList, ps, mc, alignment, uint8(*trimThreshold), *force, *optimise)
 }

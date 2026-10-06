@@ -13,6 +13,7 @@ import zipfile
 
 from pypdf import PdfReader
 from build_package import ROOT, TARGETS
+from compare_compression import verify_suite
 
 
 def digest(path):
@@ -152,6 +153,8 @@ def main():
     assert {p.name: digest(p) for p in inputs.iterdir()} == original
     assert not list(work.glob(".score2pdf-*.tmp"))
     checks.append("overwrite refusal, force replacement, failure preservation, duplicates, disguised multi-page TIFF, unchanged sources")
+    verify_suite(binary, work / "compression")
+    checks.append("lossless compression: all decoded pixels and placement identical, PDFs never larger")
     report = {"target": args.target, "host": platform.platform(), "machine": platform.machine(),
               "commit": args.commit, "version": version, "archive": archive.name,
               "sha256": expected_checksum, "checks": checks, "result": "passed"}

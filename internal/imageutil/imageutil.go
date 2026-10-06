@@ -2,7 +2,6 @@ package imageutil
 
 import (
 	"bytes"
-	"compress/zlib"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -21,6 +20,8 @@ type EncodedImage struct {
 	Width      int
 	Height     int
 	ColorSpace string
+	Bits       int
+	Predictor  bool
 	Data       []byte
 }
 
@@ -195,6 +196,11 @@ func isWhite(c color.Color, threshold uint8) bool {
 }
 
 func Encode(img image.Image) (EncodedImage, error) {
+	return EncodeMode(img, "legacy")
+}
+
+// EncodeMode encodes with "legacy" (fast Flate) or "lossless" (optional size optimisation).
+func EncodeMode(img image.Image, mode string) (EncodedImage, error) {
 	b := img.Bounds()
 	w, h := b.Dx(), b.Dy()
 	gray := true
@@ -229,18 +235,16 @@ func Encode(img image.Image) (EncodedImage, error) {
 		}
 	}
 
-	var compressed bytes.Buffer
-	zw, err := zlib.NewWriterLevel(&compressed, zlib.BestCompression)
+	enc := EncodedImage{Width: w, Height: h, ColorSpace: space, Bits: 8}
+	data, err := deflate(raw.Bytes())
 	if err != nil {
 		return EncodedImage{}, err
 	}
-	if _, err := zw.Write(raw.Bytes()); err != nil {
-		return EncodedImage{}, err
+	enc.Data = data
+	if mode == "legacy" {
+		return enc, nil
 	}
-	if err := zw.Close(); err != nil {
-		return EncodedImage{}, err
-	}
-	return EncodedImage{Width: w, Height: h, ColorSpace: space, Data: compressed.Bytes()}, nil
+	return optimiseImage(raw.Bytes(), channels, enc)
 }
 
 func compositeRGB(c color.Color) (uint8, uint8, uint8) {

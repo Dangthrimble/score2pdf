@@ -70,6 +70,7 @@ score2pdf --prefix "Jingle Bells" "Jingle Bells Print.pdf"
 - Horizontal alignment: **centred**
 - Vertical alignment: **top**
 - White-trim threshold: **242/255** per RGB channel
+- Lossless size optimisation: **off**
 
 Each cropped image is enlarged as much as possible inside the available page area while preserving its aspect ratio. The raster image itself is not resampled; the PDF scales it at display/print time.
 
@@ -268,3 +269,66 @@ Each successful job retains its package and SHA-256 checksum plus a JSON report
 and sample PDFs as GitHub Actions artifacts. These CI artifacts are development
 builds, not published releases. Verification uses Python and pypdf only on the
 build/test hosts; the distributed score2pdf executable remains standalone.
+
+## Optional lossless PDF size optimisation
+
+Normal conversion favours speed. Add `--optimise` when a smaller PDF is worth
+extra processing time:
+
+```sh
+score2pdf --optimise "Jingle Bells.pdf"
+```
+
+This tries reversible PNG-style row filters and, for pages whose pixels are
+already exclusively black or white, packed one-bit storage. It selects the
+smallest image object, including PDF decoding metadata, from these candidates
+and the normal fast encoding. It does not threshold grey pixels, discard
+colour, resample, or apply JPEG recompression. Trying several candidates took
+about 2.3 to 2.9 times as long as normal conversion in the initial tests.
+
+With `--optimise`, conversion still reports crop and placement for each page,
+and finishes with the PDF size and elapsed time:
+
+```text
+Lossless size optimisation: enabled
+p01  Jingle Bells p01.png                   crop 2400x3200  placed 184.6 x 246.1 mm
+...
+Created Jingle Bells.pdf (3.32 MB) in 21.2 seconds
+```
+
+Here, **lossless means identical to the previous score2pdf output pixels**.
+Existing trimming and compositing onto white still apply. The existing image
+pipeline still converts 16-bit source samples to 8-bit; this change does not
+provide archival preservation of 16-bit data, transparency, or colour profiles.
+JPEG inputs are still decoded and compressed losslessly; direct embedding of
+original JPEG streams is not part of this first optimisation pass.
+
+Source images are read only. Existing output PDFs are protected unless
+`--force` is used.
+
+For a reproducible comparison with independent decoding and JSON size/timing
+results, build the executable, install the verification dependencies, and run:
+
+```sh
+go build -o dist/score2pdf ./cmd/score2pdf
+python -m pip install -r scripts/requirements-runtime.txt
+python scripts/compare_compression.py --binary dist/score2pdf --output dist/comparison
+```
+
+On Windows use `dist/score2pdf.exe` for both build and comparison commands.
+Without input options this tests the tiny four-format runtime fixtures plus
+synthetic black-and-white, greyscale, colour and noisy pages. Synthetic results
+are not predictions for actual scans. The script verifies every decoded pixel,
+page dimensions, placement, and that the complete PDF is no larger.
+
+To compare your own scores, use a new output directory each time:
+
+```sh
+python scripts/compare_compression.py --binary dist/score2pdf \
+  --input-dir /path/to/scans --prefix "Jingle Bells" --output dist/jingle-comparison
+```
+
+The comparison outputs include `legacy.pdf`, `lossless.pdf`, and
+`comparison.json`. This developer verification needs Python and pypdf; the
+score2pdf executable remains standalone. Native package CI also runs the
+comparison suite on all six supported targets.
