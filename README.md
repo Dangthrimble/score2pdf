@@ -1,6 +1,7 @@
 # score2pdf
 
 `score2pdf` turns a numbered set of score-page images into a print-ready PDF.
+See the [backlog](BACKLOG.md) for outstanding work.
 
 It is designed for a simple workflow: manually remove scanner/book-edge noise and correct any obvious rotation first, then let `score2pdf` trim the remaining white border, fit each page proportionally onto a PDF page, and write the pages in numeric order.
 
